@@ -1,0 +1,130 @@
+{
+  "name": "Twilio Message Status to Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio/message-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "52c1b4f9-e6bb-4fc8-9d71-873c4c60e48e",
+      "name": "Twilio Message Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ],
+      "webhookId": "twilio-message-status"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst headers = $json.headers ?? {};\n\nconst twilio = {};\nfor (const [key, value] of Object.entries(body)) {\n  twilio[key] = Array.isArray(value) ? value[0] : value;\n}\n\nif (!twilio.MessageSid && !twilio.SmsSid && !twilio.SmsMessageSid && !twilio.sid) {\n  throw new Error('Twilio status callback is missing MessageSid.');\n}\n\nreturn [\n  {\n    json: {\n      twilio,\n      headers\n    }\n  }\n];"
+      },
+      "id": "e6181c17-bf97-47f1-a53a-41b7ef073588",
+      "name": "Normalize Status Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<your-project-ref>.supabase.co/rest/v1/rpc/update_twilio_message_status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $json.twilio, request_headers: $json.headers }) }}",
+        "options": {}
+      },
+      "id": "5b3c7e2e-20d5-4225-8155-8180f34e45bf",
+      "name": "Update Message Status in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "",
+          "name": "Supabase service role headers - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 204
+        }
+      },
+      "id": "aa113f68-4ff8-49de-b3c9-af95d73ca839",
+      "name": "Acknowledge Status Callback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Twilio Message Status": {
+      "main": [
+        [
+          {
+            "node": "Normalize Status Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Status Payload": {
+      "main": [
+        [
+          {
+            "node": "Update Message Status in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Message Status in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Status Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

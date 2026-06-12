@@ -1,0 +1,414 @@
+{
+  "name": "AI Intent Classification to Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/classify-whatsapp-message",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cfe2e3e1-48fc-4416-834c-7352a559531d",
+      "name": "Classify WhatsApp Message Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        0
+      ],
+      "webhookId": "ai-classify-whatsapp-message"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst messageId = body.message_id ?? body.messageId ?? body.message?.id;\n\nif (!messageId) {\n  throw new Error('Classification request must include message_id.');\n}\n\nreturn [\n  {\n    json: {\n      message_id: messageId,\n      source: body.source ?? 'whatsapp_inbound',\n      requested_at: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "id": "7fb03a4a-d8d7-46da-b2ad-8bc49f9623d1",
+      "name": "Normalize Classification Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<your-project-ref>.supabase.co/rest/v1/rpc/get_whatsapp_classification_context",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_message_id: $json.message_id, p_recent_limit: 10 }) }}",
+        "options": {}
+      },
+      "id": "96cd5378-1a8e-4466-9dda-7635574358a7",
+      "name": "Fetch Classification Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "",
+          "name": "Supabase service role headers - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $json;\nconst message = context.message ?? {};\nconst contact = context.contact ?? {};\nconst conversation = context.conversation ?? {};\nconst recentMessages = context.recent_messages ?? [];\n\nif (!message.id) {\n  throw new Error('Supabase context lookup did not return a message.');\n}\n\nconst schema = {\n  type: 'object',\n  additionalProperties: false,\n  properties: {\n    intent: {\n      type: 'string',\n      enum: ['sales_lead', 'support_faq', 'reservation_booking', 'human_escalation', 'spam_noise', 'unknown']\n    },\n    confidence: {\n      type: 'number',\n      minimum: 0,\n      maximum: 1\n    },\n    urgency: {\n      type: 'string',\n      enum: ['low', 'medium', 'high']\n    },\n    summary: {\n      type: 'string'\n    },\n    recommended_action: {\n      type: 'string'\n    },\n    missing_fields: {\n      type: 'array',\n      items: { type: 'string' }\n    }\n  },\n  required: ['intent', 'confidence', 'urgency', 'summary', 'recommended_action', 'missing_fields']\n};\n\nconst classifierInput = {\n  business_context: {\n    product: 'WhatsApp AI Triage Engine for LATAM service businesses',\n    demo_business: 'EJDLV-style reservations and service inquiries',\n    supported_intents: ['sales_lead', 'support_faq', 'reservation_booking', 'human_escalation', 'spam_noise', 'unknown']\n  },\n  contact,\n  conversation,\n  target_message: message,\n  recent_messages: recentMessages\n};\n\nreturn [\n  {\n    json: {\n      message_id: message.id,\n      conversation_id: conversation.id,\n      contact_id: contact.id,\n      model: 'gpt-4.1-mini',\n      prompt_version: 'intent-classifier-v1',\n      input_context: context,\n      openai_request: {\n        model: 'gpt-4.1-mini',\n        instructions: [\n          'You classify inbound WhatsApp messages for a service-business triage system.',\n          'Return only the structured JSON object requested by the schema.',\n          'Use reservation_booking when the customer asks about dates, times, group size, availability, booking, or prices for a visit/reservation.',\n          'Use sales_lead when the customer is interested in buying, pricing, quoting, or services but not specifically booking/reserving.',\n          'Use support_faq for common operational questions that can be answered from known policy/context.',\n          'Use human_escalation for complaints, unsafe situations, payment disputes, angry customers, legal/medical/emergency issues, or low confidence on a high-stakes reply.',\n          'Use spam_noise for irrelevant, abusive, bot-like, or nonsensical messages.',\n          'Use unknown when there is not enough information.',\n          'Never invent prices, dates, policies, or availability. Recommended actions should ask for missing info or route to a human when needed.'\n        ].join('\\n'),\n        input: JSON.stringify(classifierInput),\n        text: {\n          format: {\n            type: 'json_schema',\n            name: 'whatsapp_intent_classification',\n            strict: true,\n            schema\n          }\n        }\n      }\n    }\n  }\n];"
+      },
+      "id": "53d32d13-7d67-47d7-a3f5-22f1f276b072",
+      "name": "Build OpenAI Classification Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.openai_request) }}",
+        "options": {}
+      },
+      "id": "9f2c6f13-6ebd-4e13-820a-6d70935a5e76",
+      "name": "Classify with OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "OpenAI bearer header - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\nconst source = $('Build OpenAI Classification Request').item.json;\n\nlet text = raw.output_text;\n\nif (!text && Array.isArray(raw.output)) {\n  for (const outputItem of raw.output) {\n    if (!Array.isArray(outputItem.content)) continue;\n    const textPart = outputItem.content.find((part) => part.type === 'output_text' || part.text);\n    if (textPart) {\n      text = textPart.text;\n      break;\n    }\n  }\n}\n\nif (!text) {\n  throw new Error('OpenAI response did not include output_text.');\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (error) {\n  throw new Error(`OpenAI classification JSON parse failed: ${error.message}`);\n}\n\nreturn [\n  {\n    json: {\n      message_id: source.message_id,\n      conversation_id: source.conversation_id,\n      contact_id: source.contact_id,\n      intent: parsed.intent,\n      confidence: parsed.confidence,\n      urgency: parsed.urgency,\n      summary: parsed.summary,\n      recommended_action: parsed.recommended_action,\n      missing_fields: parsed.missing_fields ?? [],\n      model: raw.model ?? source.model,\n      prompt_version: source.prompt_version,\n      input_context: source.input_context,\n      raw_response: raw\n    }\n  }\n];"
+      },
+      "id": "cde0fe57-2bdb-4d86-9925-4d1bcbe1d0fa",
+      "name": "Parse OpenAI Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<your-project-ref>.supabase.co/rest/v1/rpc/save_ai_classification",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $json }) }}",
+        "options": {}
+      },
+      "id": "f98e94ec-2031-40a2-bbb4-2d90721a7249",
+      "name": "Save AI Classification in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "",
+          "name": "Supabase service role headers - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const saved = $json;\nconst parsed = $('Parse OpenAI Classification').item.json;\nconst context = parsed.input_context ?? {};\nconst contact = context.contact ?? {};\nconst conversation = context.conversation ?? {};\nconst customerPhone = contact.phone_number;\nconst businessPhone = conversation.business_phone_number ?? 'whatsapp:+15550100000';\nconst intent = parsed.intent;\nconst missingFields = Array.isArray(parsed.missing_fields) ? parsed.missing_fields : [];\n\nconst missing = new Set(missingFields.map((field) => String(field).toLowerCase()));\nlet body = '';\nlet shouldSend = true;\n\nif (intent === 'reservation_booking') {\n  const asksGroupSize = missing.has('group_size') || missing.has('number_of_people') || missing.has('party_size');\n  const asksPreferredTime = missing.has('preferred_time') || missing.has('time') || missing.has('schedule');\n\n  if (asksGroupSize && asksPreferredTime) {\n    body = 'Hola, con gusto te ayudo. Para cotizarte mejor, me puedes confirmar para cuantas personas seria y que horario prefieres?';\n  } else if (asksGroupSize) {\n    body = 'Hola, con gusto te ayudo. Para cotizarte mejor, me puedes confirmar para cuantas personas seria?';\n  } else if (asksPreferredTime) {\n    body = 'Hola, con gusto te ayudo. Me puedes confirmar que horario prefieres para revisar la disponibilidad?';\n  } else {\n    body = 'Hola, con gusto te ayudo. Ya tengo tu solicitud de reserva; te comparto la informacion y revisamos disponibilidad para la fecha que necesitas.';\n  }\n} else if (intent === 'sales_lead') {\n  body = 'Hola, gracias por escribirnos. Con gusto te ayudo con la informacion. Me puedes contar un poco mas sobre lo que necesitas para orientarte mejor?';\n} else if (intent === 'support_faq') {\n  body = 'Hola, gracias por escribirnos. Con gusto reviso tu consulta y te comparto la informacion correspondiente.';\n} else if (intent === 'human_escalation') {\n  body = 'Gracias por avisarnos. Voy a pasar tu caso con una persona del equipo para que pueda ayudarte mejor.';\n} else if (intent === 'unknown') {\n  body = 'Hola, gracias por escribirnos. Me puedes dar un poco mas de detalle para ayudarte mejor?';\n} else if (intent === 'spam_noise') {\n  shouldSend = false;\n}\n\nif (!customerPhone) {\n  shouldSend = false;\n}\n\nreturn [\n  {\n    json: {\n      should_send: shouldSend,\n      from: businessPhone,\n      to: customerPhone,\n      body,\n      sender_type: 'ai',\n      external_thread_id: conversation.external_thread_id,\n      conversation_id: conversation.id,\n      classification: saved,\n      intent,\n      confidence: parsed.confidence,\n      urgency: parsed.urgency\n    }\n  }\n];"
+      },
+      "id": "70e27f10-4c6f-49d7-8a25-dce903742d14",
+      "name": "Build Basic WhatsApp Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "8611d69f-2a02-4875-982b-6f4330c34d66",
+              "leftValue": "={{$json.should_send}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "559c1f71-46bf-4f9e-86bd-c78f96f3c3c5",
+      "name": "Should Send Basic Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.example.com/webhook/twilio/send-whatsapp-reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: $json.from, to: $json.to, body: $json.body, sender_type: $json.sender_type, external_thread_id: $json.external_thread_id, conversation_id: $json.conversation_id }) }}",
+        "options": {}
+      },
+      "id": "0a858435-e88e-4e03-b9b2-fc1aed65d40d",
+      "name": "Send Basic WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -120
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const reply = $('Build Basic WhatsApp Reply').item.json;\nlet outbound = null;\n\ntry {\n  outbound = $('Send Basic WhatsApp Reply').item.json;\n} catch (error) {\n  outbound = null;\n}\n\nreturn [\n  {\n    json: {\n      ok: true,\n      auto_reply_sent: Boolean(outbound),\n      reply,\n      outbound\n    }\n  }\n];"
+      },
+      "id": "afcf010e-d90e-41b8-8e93-29ec32c07e41",
+      "name": "Build Classification Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "dbfd10dd-fe67-4d99-a402-dddfc830e8e1",
+      "name": "Respond with Classification",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Classify WhatsApp Message Request": {
+      "main": [
+        [
+          {
+            "node": "Normalize Classification Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Classification Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch Classification Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Classification Context": {
+      "main": [
+        [
+          {
+            "node": "Build OpenAI Classification Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenAI Classification Request": {
+      "main": [
+        [
+          {
+            "node": "Classify with OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify with OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Parse OpenAI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OpenAI Classification": {
+      "main": [
+        [
+          {
+            "node": "Save AI Classification in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Classification in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Build Basic WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Basic WhatsApp Reply": {
+      "main": [
+        [
+          {
+            "node": "Should Send Basic Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send Basic Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send Basic WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Classification Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Basic WhatsApp Reply": {
+      "main": [
+        [
+          {
+            "node": "Build Classification Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Classification Response": {
+      "main": [
+        [
+          {
+            "node": "Respond with Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

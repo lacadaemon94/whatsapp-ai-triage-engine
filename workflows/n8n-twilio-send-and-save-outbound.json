@@ -1,0 +1,187 @@
+{
+  "name": "Twilio Send WhatsApp Reply and Save Outbound",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio/send-whatsapp-reply",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5bc1482d-09f4-4a3a-92a4-1a0e173f3121",
+      "name": "Send WhatsApp Reply Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        0
+      ],
+      "webhookId": "twilio-send-whatsapp-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\n\nconst normalizeWhatsAppAddress = (value) => {\n  if (!value) return '';\n  const trimmed = String(value).trim();\n  return trimmed.startsWith('whatsapp:') ? trimmed : `whatsapp:${trimmed}`;\n};\n\nconst from = normalizeWhatsAppAddress(body.from ?? body.From ?? 'whatsapp:+15550100000');\nconst to = normalizeWhatsAppAddress(body.to ?? body.To ?? body.phone_number ?? body.phoneNumber);\nconst messageBody = String(body.body ?? body.Body ?? body.message ?? body.text ?? '').trim();\nconst senderType = String(body.sender_type ?? body.senderType ?? 'ai').trim() || 'ai';\n\nif (!to) {\n  throw new Error('Outbound reply request must include to, To, phone_number, or phoneNumber.');\n}\n\nif (!messageBody) {\n  throw new Error('Outbound reply request must include body, Body, message, or text.');\n}\n\nconst externalThreadId = body.external_thread_id ?? body.thread_key ?? `twilio-messaging:${from}:${to}`;\n\nreturn [\n  {\n    json: {\n      from,\n      to,\n      body: messageBody,\n      sender_type: senderType,\n      external_thread_id: externalThreadId,\n      conversation_id: body.conversation_id ?? null,\n      status_callback: body.status_callback ?? 'https://n8n.example.com/webhook/twilio/message-status'\n    }\n  }\n];"
+      },
+      "id": "76873b43-b338-4f69-9d85-8d231099e9d7",
+      "name": "Normalize Reply Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{$json.from}}"
+            },
+            {
+              "name": "To",
+              "value": "={{$json.to}}"
+            },
+            {
+              "name": "Body",
+              "value": "={{$json.body}}"
+            },
+            {
+              "name": "StatusCallback",
+              "value": "={{$json.status_callback}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5660ded4-9df3-45a4-b572-3747b3ed91f7",
+      "name": "Send Twilio WhatsApp Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -480,
+        0
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "",
+          "name": "Twilio API basic auth - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<your-project-ref>.supabase.co/rest/v1/rpc/log_twilio_whatsapp_outbound_message",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $json, request_context: $('Normalize Reply Request').item.json }) }}",
+        "options": {}
+      },
+      "id": "8041b020-5e7d-44f2-8110-73fc616f4fbd",
+      "name": "Log Outbound Message in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "",
+          "name": "Supabase service role headers - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, saved: $json, twilio_message_sid: $('Send Twilio WhatsApp Message').item.json.sid }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "430ecb7d-baaa-420e-a741-e88201f079ee",
+      "name": "Respond with Saved Outbound",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send WhatsApp Reply Request": {
+      "main": [
+        [
+          {
+            "node": "Normalize Reply Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Reply Request": {
+      "main": [
+        [
+          {
+            "node": "Send Twilio WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Twilio WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Log Outbound Message in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Outbound Message in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Respond with Saved Outbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

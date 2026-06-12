@@ -1,0 +1,177 @@
+{
+  "name": "Twilio Incoming WhatsApp to Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio/incoming-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9d3e9a91-61e1-4f1d-9388-3f13fb546b21",
+      "name": "Twilio Incoming WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ],
+      "webhookId": "twilio-incoming-whatsapp"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst headers = $json.headers ?? {};\n\nconst twilio = {};\nfor (const [key, value] of Object.entries(body)) {\n  twilio[key] = Array.isArray(value) ? value[0] : value;\n}\n\nconst from = twilio.From ?? '';\nconst to = twilio.To ?? '';\nconst isWhatsApp = from.startsWith('whatsapp:') || to.startsWith('whatsapp:');\n\nif (!from || !to) {\n  throw new Error('Twilio webhook payload is missing From or To.');\n}\n\nif (!isWhatsApp) {\n  throw new Error(`Expected a WhatsApp webhook, received From=${from} To=${to}.`);\n}\n\nconst mediaCount = Number.parseInt(twilio.NumMedia ?? '0', 10);\ntwilio.NumMedia = Number.isFinite(mediaCount) ? String(mediaCount) : '0';\n\nreturn [\n  {\n    json: {\n      source: 'twilio_whatsapp_webhook',\n      receivedAt: new Date().toISOString(),\n      twilio,\n      headers\n    }\n  }\n];"
+      },
+      "id": "e5814c19-e025-48be-bf3e-cdfdf21cc1b5",
+      "name": "Normalize Twilio Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<your-project-ref>.supabase.co/rest/v1/rpc/ingest_twilio_whatsapp_message",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $json.twilio, request_headers: $json.headers }) }}",
+        "options": {}
+      },
+      "id": "d9f3b58f-2824-4904-b9e2-3c3e3d91a40d",
+      "name": "Ingest Message in Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "",
+          "name": "Supabase service role headers - WhatsApp triage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<Response></Response>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "f08d81cb-330f-4141-8097-1233ce3d5f1d",
+      "name": "Respond to Twilio",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.example.com/webhook/ai/classify-whatsapp-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message_id: $json.message_id, conversation_id: $json.conversation_id, contact_id: $json.contact_id, source: 'twilio_incoming_whatsapp' }) }}",
+        "options": {}
+      },
+      "id": "2c9c3925-8029-4ad0-b8d7-16f608c11060",
+      "name": "Queue AI Intent Classification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Twilio Incoming WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Normalize Twilio Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Twilio Payload": {
+      "main": [
+        [
+          {
+            "node": "Ingest Message in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest Message in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Respond to Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Twilio": {
+      "main": [
+        [
+          {
+            "node": "Queue AI Intent Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

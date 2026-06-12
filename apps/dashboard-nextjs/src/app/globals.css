@@ -1,0 +1,185 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------- Design tokens ---------- */
+/* Neutral scale (slate/zinc-tuned), single brand accent (WhatsApp-tuned green),
+   semantic tones. Dark-mode-first: .dark overrides on <html>. */
+
+:root {
+  --background: oklch(0.985 0.002 247);
+  --foreground: oklch(0.18 0.02 240);
+
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.975 0.004 247);
+  --surface-3: oklch(0.955 0.006 247);
+
+  --muted: oklch(0.96 0.005 247);
+  --muted-foreground: oklch(0.50 0.02 245);
+
+  --border: oklch(0.93 0.005 247);
+  --border-strong: oklch(0.88 0.007 247);
+  --input: oklch(0.93 0.005 247);
+  --ring: oklch(0.62 0.13 162);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 240);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 240);
+
+  --primary: oklch(0.55 0.13 162);            /* WhatsApp-tuned green */
+  --primary-foreground: oklch(0.99 0.005 162);
+
+  --secondary: oklch(0.96 0.005 247);
+  --secondary-foreground: oklch(0.22 0.02 240);
+
+  --accent: oklch(0.96 0.005 247);
+  --accent-foreground: oklch(0.22 0.02 240);
+
+  --success: oklch(0.62 0.13 162);
+  --success-foreground: oklch(0.99 0.005 162);
+
+  --warning: oklch(0.74 0.14 76);
+  --warning-foreground: oklch(0.18 0.02 76);
+
+  --destructive: oklch(0.58 0.21 27);
+  --destructive-foreground: oklch(0.99 0.005 27);
+
+  --info: oklch(0.62 0.14 245);
+  --info-foreground: oklch(0.99 0.005 245);
+
+  /* Radius scale — small base so cards/buttons stay tight. The whole scale
+     derives from this; outer panels use rounded-2xl for the slightly softer chrome. */
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.17 0.012 247);
+  --foreground: oklch(0.96 0.005 247);
+
+  --surface: oklch(0.205 0.012 247);
+  --surface-2: oklch(0.225 0.012 247);
+  --surface-3: oklch(0.25 0.013 247);
+
+  --muted: oklch(0.235 0.013 247);
+  --muted-foreground: oklch(0.68 0.014 247);
+
+  --border: oklch(0.245 0.013 247);
+  --border-strong: oklch(0.295 0.015 247);
+  --input: oklch(0.245 0.013 247);
+  --ring: oklch(0.70 0.14 162);
+
+  --card: oklch(0.20 0.012 247);
+  --card-foreground: oklch(0.96 0.005 247);
+
+  --popover: oklch(0.22 0.013 247);
+  --popover-foreground: oklch(0.96 0.005 247);
+
+  --primary: oklch(0.70 0.14 162);
+  --primary-foreground: oklch(0.16 0.04 162);
+
+  --secondary: oklch(0.27 0.013 247);
+  --secondary-foreground: oklch(0.96 0.005 247);
+
+  --accent: oklch(0.27 0.013 247);
+  --accent-foreground: oklch(0.96 0.005 247);
+
+  --success: oklch(0.70 0.14 162);
+  --success-foreground: oklch(0.16 0.04 162);
+
+  --warning: oklch(0.78 0.14 76);
+  --warning-foreground: oklch(0.18 0.04 76);
+
+  --destructive: oklch(0.65 0.20 27);
+  --destructive-foreground: oklch(0.99 0.005 27);
+
+  --info: oklch(0.70 0.14 245);
+  --info-foreground: oklch(0.16 0.04 245);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);   /* 12px */
+  --radius-md: calc(var(--radius) - 2px);   /* 14px */
+  --radius-lg: var(--radius);                /* 16px */
+  --radius-xl: calc(var(--radius) + 4px);    /* 20px */
+  --radius-2xl: calc(var(--radius) + 8px);   /* 24px */
+  --radius-3xl: calc(var(--radius) + 12px);  /* 28px */
+
+  --font-sans: var(--font-grotesk), "Space Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- Base ---------- */
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    min-width: 320px;
+    background: var(--background);
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    color: var(--foreground);
+    background: var(--background);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+
+  /* Scrollbar — subtle, theme-aware */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 18%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+    background-clip: padding-box;
+  }
+}
+

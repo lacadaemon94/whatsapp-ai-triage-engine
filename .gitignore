@@ -1,0 +1,17 @@
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE / agent-specific config — personal paths inside.
+.claude/
+.vscode/
+.idea/
+
+# Node + Next + tooling artifacts (also covered in workspace .gitignores)
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+.DS_Store

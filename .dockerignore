@@ -1,0 +1,38 @@
+# Source control + IDE
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.claude
+
+# Local env (NEVER copy into image — let docker compose / build args set values)
+.env
+.env.local
+.env.*.local
+
+# Build artifacts (rebuilt fresh inside the image)
+**/node_modules
+**/.next
+**/dist
+**/build
+**/.turbo
+
+# Tests + coverage
+**/coverage
+**/.nyc_output
+
+# Logs + OS junk
+**/*.log
+**/npm-debug.log*
+**/.DS_Store
+**/Thumbs.db
+
+# Docs + workflows aren't needed in the runtime image (kept in the repo for
+# operator humans, not for the running server).
+docs
+workflows
+supabase
+README.md
+LICENSE
