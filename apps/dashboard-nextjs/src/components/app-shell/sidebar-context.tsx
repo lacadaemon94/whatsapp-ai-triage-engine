@@ -12,8 +12,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = React.useState(false);
 
   React.useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-    if (saved === "true") setExpanded(true);
+    const frame = window.requestAnimationFrame(() => {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved === "true") setExpanded(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   React.useEffect(() => {

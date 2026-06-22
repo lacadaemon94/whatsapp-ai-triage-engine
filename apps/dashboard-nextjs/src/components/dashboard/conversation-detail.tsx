@@ -51,7 +51,7 @@ function MessageBubble({ message }: { message: Message }) {
         <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
           <span className="font-mono tabular-nums">
             {new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit" }).format(
-              new Date(message.sent_at ?? message.created_at ?? Date.now())
+              new Date(message.sent_at ?? message.created_at ?? 0)
             )}
           </span>
           {outbound ? <DeliveryIcon status={message.delivery_status} /> : null}

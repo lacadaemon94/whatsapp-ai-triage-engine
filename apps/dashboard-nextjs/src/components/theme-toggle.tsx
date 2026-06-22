@@ -9,7 +9,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  React.useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const next = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
   const label = !mounted ? "Theme" : theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System";

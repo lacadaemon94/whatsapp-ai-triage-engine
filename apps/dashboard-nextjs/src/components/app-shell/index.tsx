@@ -2,6 +2,7 @@ import * as React from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RealtimeRefresher } from "@/components/realtime/realtime-refresher";
 import { RealtimeStatusProvider } from "@/components/realtime/realtime-status-context";
+import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
 import { Sidebar } from "./sidebar";
 import { SidebarProvider } from "./sidebar-context";
 import { Topbar } from "./topbar";
@@ -27,6 +28,7 @@ export function AppShell({
             </main>
           </div>
           <RealtimeRefresher />
+          <OnboardingTour />
         </SidebarProvider>
       </RealtimeStatusProvider>
     </TooltipProvider>

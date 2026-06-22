@@ -42,7 +42,6 @@ type StoreState = {
 
 // Globals on globalThis so Next.js dev HMR doesn't reset on every file change.
 declare global {
-  // eslint-disable-next-line no-var
   var __TRIAGE_DEMO_STORE__: StoreState | undefined;
 }
 

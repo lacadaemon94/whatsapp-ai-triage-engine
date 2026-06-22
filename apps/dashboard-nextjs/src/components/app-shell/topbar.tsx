@@ -63,7 +63,8 @@ export function Topbar({
 
   // Close the mobile menu when the route changes (e.g. user taps a nav item).
   React.useEffect(() => {
-    setMenuOpen(false);
+    const frame = window.requestAnimationFrame(() => setMenuOpen(false));
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
 
   return (
