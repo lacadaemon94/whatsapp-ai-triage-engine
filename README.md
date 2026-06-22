@@ -1,9 +1,9 @@
-# WhatsApp AI Triage Engine
+# WhatsApp AI Triage Workflow
 
-> A small-business WhatsApp inbox where every inbound message gets classified by
-> an LLM, routed to the right queue, and surfaced to a human operator in real
-> time — with the operator's typed reply going back through the same pipe as
-> the AI's automatic replies.
+> An open-source sample workflow for businesses that manage sales, support,
+> reservations, scheduling, or follow-up through WhatsApp. Incoming messages are
+> classified by AI, summarized with context, routed to the right queue, and kept
+> ready for a team member to review or reply.
 
 [![Stack](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![Stack](https://img.shields.io/badge/Supabase-Postgres+RLS-3ecf8e?logo=supabase)](https://supabase.com/)
@@ -11,10 +11,33 @@
 [![Stack](https://img.shields.io/badge/Twilio-WhatsApp-f22f46?logo=twilio)](https://www.twilio.com/whatsapp)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-This repo is the result of a case study: how few moving parts does it take to
-build a production-shaped WhatsApp triage system that handles real customer
-load on a small business's main number? The answer turned out to be smaller
-than expected.
+This repo is not a client deployment or a measured implementation result. It is
+a production-shaped sample of a common manual workflow: messages arrive faster
+than a team can sort them, important opportunities get mixed with routine
+questions, and context lives in someone's memory instead of in the system.
+
+The sample shows how AI can act as a first-pass coordinator while people stay
+in charge of judgment, relationship, pricing, approvals, and sensitive replies.
+
+---
+
+## What this sample shows
+
+- Classify incoming WhatsApp messages by intent, urgency, and confidence.
+- Summarize the conversation so the next person has context quickly.
+- Route sales, support, booking, spam, and unclear messages into visible queues.
+- Draft or trigger safe next steps without pretending every conversation should
+  be fully automated.
+- Keep AI-generated replies and team replies flowing through one auditable
+  delivery path.
+
+## Where the impact is felt
+
+- **Operations:** fewer repetitive inbox-sorting tasks and less context chasing.
+- **Customer experience:** faster first response and more consistent follow-up.
+- **Revenue protection:** fewer hot leads or booking requests buried in chat.
+- **Management visibility:** clearer view of message volume, urgency, and where
+  the team is spending time.
 
 ---
 
@@ -27,17 +50,17 @@ docker compose up
 ```
 
 Then open <http://localhost:3000>. The dashboard boots straight into a seeded
-demo inbox with 18 fictional conversations, classifications, handoffs and
-lead events — no Supabase, no n8n, no Twilio, no auth.
+demo inbox with 18 fictional conversations, classifications, review requests,
+and lead events — no Supabase, no n8n, no Twilio, no auth.
 
 A built-in **realtime simulator** drips a new contextual inbound message into
 a random open conversation every ~12 seconds, so the "Live" badge isn't
 lying. You can:
 
-- Click into any conversation, type a reply, watch the conversation move out
-  of *Waiting on human*.
+- Click into any conversation, type a reply, and watch the conversation move out
+  of the review queue.
 - Change status / priority on a conversation and watch the stats card update.
-- Resolve handoffs from `/handoffs`.
+- Review conversations that need team judgment from `/handoffs`.
 - Mark lead events as in-progress / converted from `/leads`.
 
 Everything is wired against an in-memory store that resets on container
@@ -114,14 +137,14 @@ flowchart LR
 
   PG --> RT
   RT -.->|postgres_changes ws| UI
-  UI -->|operator types reply| SA
+  UI -->|team member replies| SA
   SA -->|same outbound webhook + sender_type=human| OUT
 ```
 
-The key insight: **operator-typed replies and AI-generated replies go through
-the same outbound webhook**, distinguished only by a `sender_type` field. That
-means a single workflow handles delivery, logging, and status callbacks —
-there's no second pipeline to maintain.
+The key pattern: **team replies and AI-generated replies go through the same
+outbound webhook**, distinguished only by a `sender_type` field. That means a
+single workflow handles delivery, logging, and status callbacks instead of
+maintaining separate paths for automation and team review.
 
 ---
 
@@ -129,7 +152,7 @@ there's no second pipeline to maintain.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| **Messaging** | Twilio WhatsApp | Best WhatsApp Business sandbox + cheap entry pricing for a case study |
+| **Messaging** | Twilio WhatsApp | Practical WhatsApp Business entry point for demo and production-style testing |
 | **Orchestration** | [n8n](https://n8n.io) (self-hosted) | Easy to import a workflow, no vendor lock-in, can be self-hosted next to the DB |
 | **Data + Auth + Realtime** | Supabase (Postgres + Realtime + Auth) | One vendor for the persistence, RLS, and websocket fan-out cuts a huge amount of glue code |
 | **LLM** | OpenAI `gpt-4.1-mini` with Structured Outputs | Strict JSON schema means classification is parse-error-free |
@@ -140,8 +163,8 @@ there's no second pipeline to maintain.
 
 ## How realtime works
 
-When an inbound message lands in Supabase, **every connected operator's
-browser updates within ~300ms** with no polling. The chain is:
+When an inbound message lands in Supabase, **every connected dashboard updates
+within ~300ms** with no polling. The chain is:
 
 1. n8n upserts a row into `public.messages` (via service-role RPC).
 2. Supabase's `supabase_realtime` publication broadcasts the `INSERT` over
@@ -164,7 +187,7 @@ zero events. See `src/components/realtime/realtime-refresher.tsx`.
 
 ## Security model
 
-The hard line: **operators can only see triage data after they've been
+The hard line: **team members can only see triage data after they've been
 explicitly allowlisted**. No "anyone with a magic link is in" shortcuts.
 
 - A `triage_operators` table holds the allowlist (id, user_id, email, role,
@@ -175,8 +198,8 @@ explicitly allowlisted**. No "anyone with a magic link is in" shortcuts.
   of the form `using (public.is_triage_operator())` — no wide-open
   `using (true)`.
 - A trigger on `auth.users` links a freshly-signed-up user back to their
-  allowlist row by email (case-insensitive), so the operator onboarding flow
-  is "add the email to `triage_operators`, then send them a magic link".
+  allowlist row by email (case-insensitive), so onboarding is "add the email to
+  `triage_operators`, then send them a magic link".
 - Server actions call `requireOperator()` **before** the service-role write.
   RLS is the second line of defence, not the only one.
 - The service-role key is server-only — no client component ever imports it.
@@ -190,7 +213,7 @@ explicitly allowlisted**. No "anyone with a magic link is in" shortcuts.
 | Surface | Behaviour |
 | --- | --- |
 | All 6 `lib/data/*` fetchers | Return data from `lib/demo/store.ts` (an in-memory singleton seeded from `lib/demo/fixtures.ts`) |
-| `requireOperator()` | Returns a fake admin operator without hitting Supabase |
+| `requireOperator()` | Returns a fake admin user without hitting Supabase |
 | `(app)/layout.tsx` | Skips the auth + allowlist check, renders the shell directly |
 | `proxy.ts` | Redirects `/` and `/login` → `/inbox`; doesn't refresh sessions |
 | All 4 server actions | Mutate the in-memory store instead of calling Supabase / n8n |
@@ -198,8 +221,8 @@ explicitly allowlisted**. No "anyone with a magic link is in" shortcuts.
 | `/api/demo/tick` | Picks a random open conversation, appends a contextually-appropriate new inbound message + AI classification |
 | `next-with-root-env.mjs` | Suppresses the missing-Supabase-key warning |
 
-The fixtures cover the full intent surface (sales lead, reservation,
-support, human escalation, spam, unknown) and the simulator picks
+The fixtures cover the full intent surface (sales lead, reservation, support,
+requests for a person, spam, unknown) and the simulator picks
 follow-ups consistent with the existing conversation intent, so the demo
 feels coherent rather than random noise.
 
@@ -226,7 +249,7 @@ feels coherent rather than random noise.
 4. Configure SMTP in **Project Settings → Authentication → SMTP** so magic
    links arrive instead of getting Supabase-throttled. Any decent SMTP relay
    (Zoho, Postmark, SES, Resend) works.
-5. Seed your operator email into `triage_operators`:
+5. Seed your team email into `triage_operators`:
    ```sql
    insert into triage_operators (email, role, active)
    values ('you@example.com', 'admin', true);
@@ -260,7 +283,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open <http://localhost:3000>, sign in with your operator email, click the
+Open <http://localhost:3000>, sign in with your team email, click the
 magic link in your inbox, and you should land on `/inbox` with whatever
 data is in your Supabase.
 
@@ -359,7 +382,7 @@ POST {SUPABASE_URL}/rest/v1/rpc/save_ai_classification
 | `sales_lead` | Net-new revenue opportunity | Creates a `lead_events` row, bumps `contacts.lead_score` |
 | `reservation_booking` | Reservation / appointment request | Routed to the reservations queue; conversation stays "open" |
 | `support_faq` | Question with a public answer | AI replies inline if confident; otherwise escalates |
-| `human_escalation` | Customer wants a human OR AI is out of depth | Creates a `handoff_requests` row, surfaces in `/handoffs` |
+| `human_escalation` | Customer asks for a person OR the AI is out of depth | Creates a `handoff_requests` row, surfaces in `/handoffs` |
 | `spam_noise` | Promotional spam, scam, or noise | Conversation auto-closed, no reply sent |
 | `unknown` | Too ambiguous to classify | AI sends a clarifying question |
 
@@ -419,7 +442,7 @@ apps/dashboard-nextjs/src/
 
 Things that are obvious next steps if you take this further:
 
-- **Drafted AI replies the operator can edit-and-send**, instead of either
+- **Drafted AI replies a team member can edit-and-send**, instead of either
   auto-send or full-manual.
 - **Per-action audit log** (who set this conversation to high priority?).
 - **Search** — the topbar input is decorative; wiring fuzzy search across
@@ -437,8 +460,8 @@ PRs welcome, especially for:
 - The canonical supabase migrations set noted above.
 - Additional intent classes / additional demo fixtures.
 - A self-hosted n8n compose profile.
-- Localized demo fixtures (Spanish/Portuguese/French) so the case study
-  reads more globally.
+- Localized demo fixtures (Spanish/Portuguese/French) so the sample works for
+  more markets.
 
 Please run `npx next build` before opening a PR to make sure TypeScript is
 clean.
