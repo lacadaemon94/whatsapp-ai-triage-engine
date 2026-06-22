@@ -260,6 +260,24 @@
   }
 }
 
+@media (max-width: 640px) {
+  .onboarding-visual-shell {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    padding: 0.75rem;
+    box-shadow: 0 12px 34px color-mix(in oklab, black 18%, transparent);
+  }
+
+  .onboarding-message-bubble {
+    gap: 0.625rem;
+    padding: 0.625rem;
+  }
+
+  .onboarding-processing-card {
+    padding: 0.75rem;
+  }
+}
+
 @keyframes onboarding-message-in {
   from {
     opacity: 0;

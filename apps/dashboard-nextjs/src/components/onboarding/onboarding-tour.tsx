@@ -130,14 +130,15 @@ export function OnboardingTour() {
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100svh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl outline-none",
+            "fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col overflow-hidden border-0 bg-surface shadow-2xl outline-none",
+            "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[calc(100svh-1.5rem)] sm:w-[calc(100vw-1.5rem)] sm:max-w-5xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:border-border",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
           )}
         >
-          <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-            <div className="min-h-[20rem] border-b border-border bg-surface-2 p-4 sm:p-5 lg:min-h-[36rem] lg:border-b-0 lg:border-r">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)] lg:overflow-hidden">
+            <div className="shrink-0 border-b border-border bg-surface-2 p-3 sm:p-5 lg:min-h-[36rem] lg:border-b-0 lg:border-r">
               <div className="flex h-full min-h-0 flex-col">
-                <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
                   <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
                     <span className="grid h-5 w-5 place-items-center rounded-full bg-primary/15 text-primary">
                       <StepIcon className="h-3.5 w-3.5" aria-hidden />
@@ -150,32 +151,32 @@ export function OnboardingTour() {
                     </Button>
                   </DialogPrimitive.Close>
                 </div>
-                <div className="flex min-h-0 flex-1 items-center">
+                <div className="flex min-h-0 items-center lg:flex-1">
                   <StepVisual type={step.visual} />
                 </div>
               </div>
             </div>
 
-            <div className="flex max-h-[calc(100svh-1.5rem)] min-h-0 flex-col overflow-y-auto p-4 sm:p-6 lg:p-7">
-              <div className="mb-5 flex items-center gap-2">
+            <div className="flex min-h-0 flex-col p-4 pb-0 sm:p-6 sm:pb-0 lg:max-h-[calc(100svh-1.5rem)] lg:overflow-y-auto lg:p-7">
+              <div className="mb-4 flex items-center gap-2 sm:mb-5">
                 <Badge variant="default">{step.eyebrow}</Badge>
                 <span className="font-mono text-[11px] text-muted-foreground">
                   {activeStep + 1} / {steps.length}
                 </span>
               </div>
 
-              <DialogPrimitive.Title className="text-balance text-2xl font-semibold leading-tight sm:text-3xl">
+              <DialogPrimitive.Title className="text-balance text-[1.45rem] font-semibold leading-tight sm:text-3xl">
                 {step.title}
               </DialogPrimitive.Title>
-              <DialogPrimitive.Description className="mt-3 text-sm leading-6 text-muted-foreground">
+              <DialogPrimitive.Description className="mt-3 text-sm leading-6 text-muted-foreground sm:text-[15px]">
                 {step.summary}
               </DialogPrimitive.Description>
 
-              <ul className="mt-5 grid gap-2" aria-label="Step highlights">
+              <ul className="mt-4 grid gap-2 sm:mt-5" aria-label="Step highlights">
                 {step.points.map((point) => (
                   <li
                     key={point}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm leading-5"
                   >
                     <Check className="h-4 w-4 text-primary" aria-hidden />
                     <span>{point}</span>
@@ -183,8 +184,8 @@ export function OnboardingTour() {
                 ))}
               </ul>
 
-              <div className="mt-auto pt-6">
-                <div className="mb-4 flex items-center gap-1.5" aria-label="Tour progress">
+              <div className="sticky bottom-0 -mx-4 mt-5 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:p-0 lg:pt-6">
+                <div className="mb-3 flex items-center justify-center gap-1.5 sm:mb-4 sm:justify-start" aria-label="Tour progress">
                   {steps.map((progressStep, index) => (
                     <button
                       key={progressStep.eyebrow}
@@ -193,24 +194,27 @@ export function OnboardingTour() {
                       aria-label={`Go to step ${index + 1}: ${progressStep.eyebrow}`}
                       aria-current={index === activeStep ? "step" : undefined}
                       className={cn(
-                        "h-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                        index === activeStep ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                        "h-2.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:h-2",
+                        index === activeStep ? "w-9 bg-primary sm:w-8" : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50 sm:w-2"
                       )}
                     />
                   ))}
                 </div>
 
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Button variant="ghost" onClick={completeTour}>
+                <div className="flex flex-col-reverse gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
+                  <Button variant="ghost" className="w-full min-[430px]:w-auto" onClick={completeTour}>
                     Skip
                   </Button>
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-2 gap-2 min-[430px]:flex min-[430px]:items-center">
                     {activeStep > 0 ? (
-                      <Button variant="outline" onClick={() => setActiveStep((current) => current - 1)}>
+                      <Button className="w-full min-[430px]:w-auto" variant="outline" onClick={() => setActiveStep((current) => current - 1)}>
                         Back
                       </Button>
-                    ) : null}
+                    ) : (
+                      <span aria-hidden className="hidden min-[430px]:block" />
+                    )}
                     <Button
+                      className={cn("w-full", activeStep === 0 && "col-span-2 min-[430px]:col-span-1 min-[430px]:w-auto")}
                       onClick={() => {
                         if (isLastStep) {
                           completeTour();
@@ -342,7 +346,7 @@ function RoutingVisual() {
         {lanes.map((lane, index) => {
           const LaneIcon = lane.icon;
           return (
-            <div key={lane.label} className="min-h-28 rounded-lg border border-border bg-surface p-2">
+            <div key={lane.label} className="min-h-24 rounded-lg border border-border bg-surface p-2 sm:min-h-28">
               <div className="mb-2 flex items-center gap-1.5">
                 <LaneIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                 <span className="text-xs font-medium">{lane.label}</span>
@@ -384,7 +388,7 @@ function HumanControlVisual() {
         <div className="mt-4 rounded-lg border border-border bg-surface-2 p-3 text-sm leading-5">
           Thanks for reaching out. I can help with pricing for 40 seats. Could you confirm your preferred start date?
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           <Button size="sm" variant="outline">
             Edit
           </Button>
